@@ -1,5 +1,6 @@
+import { projects } from '@/data/projects';
 import { createSlice } from '@reduxjs/toolkit';
-import { projects } from '@/data/projects'; // We'll create this next
+
 
 const initialState = {
     projects, // from mock file
