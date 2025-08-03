@@ -1,3 +1,4 @@
+// store/chatSlice.ts (already exists)
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface Message {
@@ -7,7 +8,7 @@ interface Message {
 }
 
 interface ChatState {
-    [key: string]: Message[]; // key = "projectId" or "projectId_fileId"
+    [key: string]: Message[]; // key = projectId or projectId_fileId
 }
 
 const initialState: ChatState = {};
