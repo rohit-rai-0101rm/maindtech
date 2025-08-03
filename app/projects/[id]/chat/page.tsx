@@ -1,4 +1,3 @@
-// app/projects/[id]/chat/page.tsx
 "use client";
 
 import { useParams } from "next/navigation";
@@ -7,6 +6,11 @@ import { sendMessage } from "@/store/chatSlice";
 import { useState } from "react";
 import { RootState } from "@/store";
 import { format } from "date-fns";
+import { z } from "zod";
+
+const chatInputSchema = z.object({
+  message: z.string().max(500, "Message too long"),
+});
 
 export default function ProjectChatPage() {
   const { id: projectId } = useParams();
@@ -14,90 +18,198 @@ export default function ProjectChatPage() {
   const messages = useAppSelector(
     (state: RootState) => state.chat[projectId as string] || []
   );
+
   const [input, setInput] = useState("");
+  const [error, setError] = useState("");
+  const [file, setFile] = useState<File | null>(null);
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    const trimmed = input.trim();
+    const validation = chatInputSchema.safeParse({ message: trimmed });
 
-    const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+    if (!validation.success && !file) {
+      // Show Zod validation error if any
+      const zodError = validation.error.errors[0]?.message;
+      setError(zodError || "Please enter a message or upload a file");
+      return;
+    }
 
-    // Send user message
-    dispatch(
-      sendMessage({
-        key: projectId as string,
-        message: {
-          role: "user",
-          content: input,
-          timestamp,
-        },
-      })
-    );
+    if (!trimmed && !file) {
+      setError("Cannot send empty message.");
+      return;
+    }
 
-    // Simulate AI response
-    setTimeout(() => {
+    setError(""); // Clear error
+
+    const timestamp = format(new Date(), "MMM dd, yyyy • hh:mm a");
+
+    // If message exists, dispatch user message
+    if (trimmed) {
       dispatch(
         sendMessage({
           key: projectId as string,
           message: {
-            role: "ai",
-            content: `You said: ${input}`,
-            timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+            role: "user",
+            content: trimmed,
+            timestamp,
           },
         })
       );
-    }, 600);
+    }
+
+    // If file exists, read and dispatch it
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        dispatch(
+          sendMessage({
+            key: projectId as string,
+            message: {
+              role: "user",
+              file: {
+                name: file.name,
+                type: file.type,
+                url: reader.result,
+              },
+              timestamp,
+            },
+          })
+        );
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Simulated AI response (only if message or file exists)
+    const aiResponseContent = trimmed || file?.name;
+    if (aiResponseContent) {
+      setTimeout(() => {
+        dispatch(
+          sendMessage({
+            key: projectId as string,
+            message: {
+              role: "ai",
+              content: `You said: ${aiResponseContent}`,
+              timestamp: format(new Date(), "MMM dd, yyyy • hh:mm a"),
+            },
+          })
+        );
+      }, 1000);
+    }
 
     setInput("");
+    setFile(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-semibold mb-4">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#073C83] via-[#7A2357] to-[#D20F35] text-white">
+      <header className="p-6 text-xl font-semibold backdrop-blur-md bg-white/10 shadow-sm">
         Chat with Project #{projectId}
-      </h1>
+      </header>
 
-      <div className="border rounded-md h-[400px] overflow-y-auto p-4 bg-gray-50 mb-4">
+      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.length === 0 ? (
-          <p className="text-gray-500 text-sm">No messages yet.</p>
+          <p className="text-center text-white/70">
+            No messages yet. Start the conversation!
+          </p>
         ) : (
           messages.map((msg, index) => (
             <div
               key={index}
-              className={`mb-3 ${
-                msg.role === "user" ? "text-right" : "text-left"
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
               <div
-                className={`inline-block px-4 py-2 rounded-lg text-sm max-w-[80%] ${
+                className={`px-4 py-2 rounded-2xl max-w-[80%] text-sm ${
                   msg.role === "user"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-gray-200 text-gray-800"
+                    ? "bg-white text-[#073C83]"
+                    : "bg-white/20 text-white backdrop-blur"
                 }`}
               >
-                {msg.content}
+                {/* Text or file */}
+                {msg.content && <p className="mb-1">{msg.content}</p>}
+                {msg.file && (
+                  <div className="mt-1">
+                    {msg.file.type.startsWith("image/") ? (
+                      <img
+                        src={msg.file.url}
+                        alt={msg.file.name}
+                        className="rounded-md max-w-xs border border-white/20"
+                      />
+                    ) : (
+                      <a
+                        href={msg.file.url}
+                        download={msg.file.name}
+                        className="underline text-blue-200"
+                      >
+                        📎 {msg.file.name}
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Timestamp */}
+                <div className="text-[10px] text-black/80 mt-2 text-right">
+                  {msg.timestamp}
+                </div>
               </div>
-              <div className="text-xs text-gray-400 mt-1">{msg.timestamp}</div>
             </div>
           ))
         )}
-      </div>
+      </main>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          className="flex-1 border rounded-md px-3 py-2 text-sm"
-          placeholder="Type your message..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-        />
-        <button
-          onClick={handleSend}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
-        >
-          Send
-        </button>
-      </div>
+      <footer className="px-4 py-4 border-t border-white/20 bg-white/10 backdrop-blur-lg">
+        <div className="flex flex-col gap-2">
+          {file && (
+            <div className="text-sm text-white/80 flex items-center gap-2">
+              📎 {file.name}
+              <button
+                className="text-red-300 text-xs hover:underline"
+                onClick={() => setFile(null)}
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 items-start">
+            <input
+              type="text"
+              placeholder="Type your message..."
+              className="flex-1 px-4 py-2 text-sm rounded-xl bg-white/90 text-black focus:outline-none focus:ring-2 focus:ring-white/30"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            />
+            <input
+              type="file"
+              accept="image/*,.pdf,.doc,.docx"
+              className="hidden"
+              id="file-upload"
+              onChange={handleFileChange}
+            />
+            <label
+              htmlFor="file-upload"
+              className="cursor-pointer px-3 py-2 bg-white text-[#073C83] rounded-xl hover:bg-gray-100"
+            >
+              📎
+            </label>
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() && !file}
+              className="bg-white text-[#073C83] font-semibold px-5 py-2 rounded-xl hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Send
+            </button>
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+        </div>
+      </footer>
     </div>
   );
 }
