@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { sendMessage } from "@/store/chatSlice";
 import { useState } from "react";
@@ -14,6 +14,9 @@ const chatInputSchema = z.object({
 
 export default function ProjectChatPage() {
   const { id: projectId } = useParams();
+  const searchParams = useSearchParams();
+  const fileId = searchParams.get("fileId");
+
   const dispatch = useAppDispatch();
   const messages = useAppSelector(
     (state: RootState) => state.chat[projectId as string] || []
@@ -28,7 +31,6 @@ export default function ProjectChatPage() {
     const validation = chatInputSchema.safeParse({ message: trimmed });
 
     if (!validation.success && !file) {
-      // Show Zod validation error if any
       const zodError = validation.error.errors[0]?.message;
       setError(zodError || "Please enter a message or upload a file");
       return;
@@ -40,10 +42,8 @@ export default function ProjectChatPage() {
     }
 
     setError(""); // Clear error
-
     const timestamp = format(new Date(), "MMM dd, yyyy • hh:mm a");
 
-    // If message exists, dispatch user message
     if (trimmed) {
       dispatch(
         sendMessage({
@@ -57,7 +57,6 @@ export default function ProjectChatPage() {
       );
     }
 
-    // If file exists, read and dispatch it
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -79,7 +78,6 @@ export default function ProjectChatPage() {
       reader.readAsDataURL(file);
     }
 
-    // Simulated AI response (only if message or file exists)
     const aiResponseContent = trimmed || file?.name;
     if (aiResponseContent) {
       setTimeout(() => {
@@ -109,7 +107,14 @@ export default function ProjectChatPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#073C83] via-[#7A2357] to-[#D20F35] text-white">
       <header className="p-6 text-xl font-semibold backdrop-blur-md bg-white/10 shadow-sm">
-        Chat with Project #{projectId}
+        {fileId ? (
+          <div>
+            <div>💾 File Chat</div>
+            <div className="text-sm text-white/70">File ID: {fileId}</div>
+          </div>
+        ) : (
+          <div>💬 Project Chat #{projectId}</div>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
@@ -132,7 +137,6 @@ export default function ProjectChatPage() {
                     : "bg-white/20 text-white backdrop-blur"
                 }`}
               >
-                {/* Text or file */}
                 {msg.content && <p className="mb-1">{msg.content}</p>}
                 {msg.file && (
                   <div className="mt-1">
@@ -153,8 +157,6 @@ export default function ProjectChatPage() {
                     )}
                   </div>
                 )}
-
-                {/* Timestamp */}
                 <div className="text-[10px] text-black/80 mt-2 text-right">
                   {msg.timestamp}
                 </div>
