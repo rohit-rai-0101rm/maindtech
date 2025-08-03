@@ -1,4 +1,3 @@
-// pages/index.tsx
 import Link from "next/link";
 
 export default function HomePage() {
@@ -6,15 +5,23 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col bg-white text-gray-900">
       {/* Navbar */}
       <header className="flex items-center justify-between px-6 py-4 shadow-sm sticky top-0 bg-white z-50">
-        <h1 className="text-2xl font-bold text-[#073C83]">MAindTec</h1>
-        <div className="flex items-center space-x-3">
-          <img
-            src="https://cdn1.iconfinder.com/data/icons/user-pictures/100/male3-512.png"
-            alt="User Avatar"
-            className="w-9 h-9 rounded-full border border-gray-300 object-cover"
-          />
-          <span className="hidden sm:block text-sm font-medium">Rohit Rai</span>
-        </div>
+        <h1 className="text-2xl font-bold text-[#073C83]">
+          <Link href="/">MAindTec</Link>
+        </h1>
+
+        {/* Avatar links to Profile */}
+        <Link href="/profile">
+          <div className="flex items-center space-x-3 cursor-pointer">
+            <img
+              src="https://cdn1.iconfinder.com/data/icons/user-pictures/100/male3-512.png"
+              alt="User Avatar"
+              className="w-9 h-9 rounded-full border border-gray-300 object-cover"
+            />
+            <span className="hidden sm:block text-sm font-medium">
+              Rohit Rai
+            </span>
+          </div>
+        </Link>
       </header>
 
       {/* Hero Section */}
